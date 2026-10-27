@@ -1,0 +1,41 @@
+name: Build Agent2API (Windows)
+
+on:
+  workflow_dispatch:        # 支持手动触发
+  push:
+    branches: [beta]        # 向 beta 分支推送时自动触发
+
+jobs:
+  build-tauri:
+    permissions:
+      contents: write       # 允许创建 Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      # 根目录安装，会同时触发 desktop-tauri 子目录的依赖
+      - name: Install dependencies
+        run: npm install
+
+      # 显式指定项目自定义的构建脚本，避免 tauri-action 猜测默认命令
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: npm run tauri:build
+          tagName: app-v__VERSION__
+          releaseName: 'Agent2API v__VERSION__'
+          releaseBody: 'Windows 安装包，下载下方 .exe 文件即可。'
+          releaseDraft: true
+          prerelease: false
