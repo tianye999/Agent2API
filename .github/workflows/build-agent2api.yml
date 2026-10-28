@@ -7,8 +7,6 @@ on:
 
 jobs:
   build-tauri:
-    permissions:
-      contents: write       # 允许创建 Release
     runs-on: windows-latest
 
     steps:
@@ -23,19 +21,21 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      # 根目录安装，会同时触发 desktop-tauri 子目录的依赖
+      # 根目录安装依赖
       - name: Install dependencies
         run: npm install
 
-      # 显式指定项目自定义的构建脚本，避免 tauri-action 猜测默认命令
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 直接运行项目的构建命令，绝不带多余参数
+      - name: Build Tauri App
+        run: npm run tauri:build
+
+      # 将生成的 exe 打包上传，供你下载
+      - name: Upload EXE Artifact
+        uses: actions/upload-artifact@v4
         with:
-          tauriScript: npm run tauri:build
-          tagName: app-v__VERSION__
-          releaseName: 'Agent2API v__VERSION__'
-          releaseBody: 'Windows 安装包，下载下方 .exe 文件即可。'
-          releaseDraft: true
-          prerelease: false
+          name: Agent2API-Windows-Installer
+          # 使用通配符 ** 匹配任何目录下的安装包（无论项目结构怎么嵌套）
+          path: |
+            **/target/release/bundle/nsis/*.exe
+            **/target/release/bundle/msi/*.msi
+          if-no-files-found: error # 如果没找到安装包，则报错提示
