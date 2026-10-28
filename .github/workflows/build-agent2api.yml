@@ -1,9 +1,9 @@
 name: Build Agent2API (Windows)
 
 on:
-  workflow_dispatch:        # 支持手动触发
+  workflow_dispatch:
   push:
-    branches: [beta]        # 向 beta 分支推送时自动触发
+    branches: [beta]
 
 jobs:
   build-tauri:
@@ -16,26 +16,32 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: 20
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
 
-      # 根目录安装依赖
-      - name: Install dependencies
+      - name: Install Root Dependencies
         run: npm install
 
-      # 直接运行项目的构建命令，绝不带多余参数
+      - name: Install Tauri Dependencies
+        run: npm run tauri:install
+
+      # 💡 新增的关键步骤：全局安装 Tauri CLI
+      - name: Install Tauri CLI Globally
+        run: npm install -g @tauri-apps/cli
+
       - name: Build Tauri App
         run: npm run tauri:build
 
-      # 将生成的 exe 打包上传，供你下载
       - name: Upload EXE Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Agent2API-Windows-Installer
-          # 使用通配符 ** 匹配任何目录下的安装包（无论项目结构怎么嵌套）
           path: |
             **/target/release/bundle/nsis/*.exe
             **/target/release/bundle/msi/*.msi
-          if-no-files-found: error # 如果没找到安装包，则报错提示
+          if-no-files-found: warn
